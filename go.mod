@@ -1,3 +1,3 @@
-module github.com/pion/template
+module github.com/pion/format
 
 go 1.24.0

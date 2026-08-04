@@ -20,6 +20,7 @@ func TestParsePacketHeader(t *testing.T) {
 	assert.False(t, hdr.hasAdaptationField)
 	assert.Equal(t, uint8(5), hdr.continuityCounter)
 }
+
 func TestPacketHeaderRoundTrip(t *testing.T) {
 	in := packetHeader{
 		payloadUnitStart:   true,
@@ -34,6 +35,7 @@ func TestPacketHeaderRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, in, out)
 }
+
 func TestParsePacketHeaderErrors(t *testing.T) {
 	_, err := parsePacketHeader([]byte{0x47, 0x00})
 	assert.ErrorIs(t, err, errShortPacket)

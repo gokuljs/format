@@ -42,6 +42,7 @@ func parsePacketHeader(pkt []byte) (packetHeader, error) {
 	hdr.hasAdaptationField = afc&0x02 != 0
 	hdr.hasPayload = afc&0x01 != 0
 	hdr.continuityCounter = pkt[3] & 0x0F
+
 	return hdr, nil
 }
 
@@ -58,7 +59,7 @@ func (h packetHeader) marshalTo(pkt []byte) {
 	if h.transportPriority {
 		pkt[1] |= 0x20
 	}
-	pkt[2] = byte(h.pid)
+	pkt[2] = byte(h.pid) //nolint:gosec // PID low byte is intentionally truncated.
 	var afc byte
 	if h.hasAdaptationField {
 		afc |= 0x02

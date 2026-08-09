@@ -34,9 +34,11 @@ func TestWriterReaderRoundTrip(t *testing.T) {
 	require.Len(t, reader.Tracks(), 1)
 	assert.Equal(t, CodecH264, reader.Tracks()[0].Codec)
 
-	for i, want := range aus {
+	for i, au := range aus {
 		got, readErr := reader.NextAccessUnit()
 		require.NoError(t, readErr, "au %d", i)
+		// The writer prepends an access unit delimiter to frames lacking one.
+		want := append(append([]byte{}, audH264...), au...)
 		assert.Equal(t, want, got.Data, "au %d", i)
 		assert.Equal(t, pts[i], got.PTS, "au %d", i)
 		assert.Equal(t, pts[i], got.DTS, "au %d", i)

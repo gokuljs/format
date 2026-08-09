@@ -96,18 +96,32 @@ func NewWriter(dst io.Writer, opts ...WriterOption) (*Writer, error) {
 	return writer, nil
 }
 
-// WriteH264 writes one H.264 access unit in Annex-B format. pts and dts are
-// 90 kHz ticks; pass dts equal to pts when the stream has no B-frames.
+// WriteH264 writes one H.264 access unit in Annex-B format. An access unit
+// delimiter NAL is prepended when absent. pts and dts are 90 kHz ticks;
+// pass dts equal to pts when the stream has no B-frames.
 func (w *Writer) WriteH264(pid uint16, pts, dts int64, accessUnit []byte) error {
-	return w.writeAccessUnit(pid, CodecH264, pts, dts, accessUnit)
+	aud := []byte(nil)
+	if len(accessUnit) > 0 && !h264StartsWithAUD(accessUnit) {
+		aud = audH264
+	}
+
+	return w.writeAccessUnit(pid, CodecH264, pts, dts, aud, accessUnit, h264IsKeyframe(accessUnit))
 }
 
-// WriteH265 writes one H.265 access unit in Annex-B format.
+// WriteH265 writes one H.265 access unit in Annex-B format. An access unit
+// delimiter NAL is prepended when absent.
 func (w *Writer) WriteH265(pid uint16, pts, dts int64, accessUnit []byte) error {
-	return w.writeAccessUnit(pid, CodecH265, pts, dts, accessUnit)
+	aud := []byte(nil)
+	if len(accessUnit) > 0 && !h265StartsWithAUD(accessUnit) {
+		aud = audH265
+	}
+
+	return w.writeAccessUnit(pid, CodecH265, pts, dts, aud, accessUnit, h265IsKeyframe(accessUnit))
 }
 
-func (w *Writer) writeAccessUnit(pid uint16, codec Codec, pts, dts int64, accessUnit []byte) error {
+func (w *Writer) writeAccessUnit(
+	pid uint16, codec Codec, pts, dts int64, aud, accessUnit []byte, keyframe bool,
+) error {
 	track, ok := w.byPID[pid]
 	if !ok {
 		return errUnknownPID
@@ -123,7 +137,12 @@ func (w *Writer) writeAccessUnit(pid uint16, codec Codec, pts, dts int64, access
 	}
 
 	w.pesScratch = appendPESHeader(w.pesScratch[:0], streamIDVideo, pts, dts)
-	w.segs = append(w.segs[:0], w.pesScratch, accessUnit)
+	w.segs = w.segs[:0]
+	w.segs = append(w.segs, w.pesScratch)
+	if aud != nil {
+		w.segs = append(w.segs, aud)
+	}
+	w.segs = append(w.segs, accessUnit)
 
 	pcrValue := uint64(0)
 	withPCR := pid == w.pcrPID
@@ -132,7 +151,7 @@ func (w *Writer) writeAccessUnit(pid uint16, codec Codec, pts, dts int64, access
 		pcrValue = uint64(base) * 300 //nolint:gosec
 	}
 
-	return w.writePES(pid, false, withPCR, pcrValue, w.segs)
+	return w.writePES(pid, keyframe, withPCR, pcrValue, w.segs)
 }
 
 func (w *Writer) maybeWritePSI(dts int64) error {

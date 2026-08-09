@@ -55,6 +55,7 @@ func parsePMT(sec psiSection) (pmt, error) {
 	return table, nil
 }
 
+//nolint:unparam // The program number is part of the PMT format and is intentionally configurable.
 func marshalPMT(programNumber uint16, table pmt) ([]byte, error) {
 	data := make([]byte, 0, 4+len(table.streams)*5)
 	// The byte conversions intentionally serialize the high and low parts

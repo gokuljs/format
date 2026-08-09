@@ -31,6 +31,7 @@ func parsePAT(sec psiSection) ([]patProgram, error) {
 	return programs, nil
 }
 
+//nolint:unparam // The transport stream ID is part of the PAT format and is intentionally configurable.
 func marshalPAT(transportStreamID uint16, programs []patProgram) ([]byte, error) {
 	data := make([]byte, 0, len(programs)*4)
 	for _, p := range programs {

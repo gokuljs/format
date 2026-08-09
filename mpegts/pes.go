@@ -67,6 +67,8 @@ func parsePESHeader(buf []byte) (pesHeader, error) {
 // appendPESHeader appends a video PES header with unbounded packet length
 // (PES_packet_length = 0, legal for video) and data alignment set.
 // The DTS is written only when it differs from the PTS.
+//
+//nolint:unparam // The stream ID remains configurable for distinct video stream IDs.
 func appendPESHeader(dst []byte, streamID byte, pts, dts int64) []byte {
 	pts &= maxTimestamp
 	dts &= maxTimestamp

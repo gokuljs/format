@@ -75,3 +75,14 @@ func TestWriterOptionValidation(t *testing.T) {
 	assert.ErrorIs(t, w.WriteH265(256, 0, 0, []byte{1}), errCodecMismatch)
 	assert.ErrorIs(t, w.WriteH264(999, 0, 0, []byte{1}), errUnknownPID)
 }
+
+func TestWriterRejectsOversizedPMT(t *testing.T) {
+	// Each track adds 5 bytes to the PMT; 34 tracks push the section past
+	// the 184 bytes that fit in a single TS packet.
+	opts := make([]WriterOption, 34)
+	for i := range opts {
+		opts[i] = WithH264Track(uint16(0x0100 + i)) //nolint:gosec
+	}
+	_, err := NewWriter(&bytes.Buffer{}, opts...)
+	assert.ErrorIs(t, err, errPSITooLarge)
+}

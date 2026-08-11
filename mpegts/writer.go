@@ -15,6 +15,7 @@ var (
 	errUnknownPID      = errors.New("mpegts: no track with this PID")
 	errCodecMismatch   = errors.New("mpegts: track codec does not match write call")
 	errEmptyAccessUnit = errors.New("mpegts: empty access unit")
+	errPSITooLarge     = errors.New("mpegts: PAT/PMT section does not fit in one TS packet (too many tracks)")
 )
 
 const (
@@ -91,6 +92,11 @@ func NewWriter(dst io.Writer, opts ...WriterOption) (*Writer, error) {
 	}
 	if writer.pmtRaw, err = marshalPMT(1, pmt{pcrPID: writer.pcrPID, streams: streams}); err != nil {
 		return nil, err
+	}
+	// writeSection emits each table as a single TS packet, so the marshaled
+	// section (pointer_field included) must fit in one packet payload.
+	if len(writer.patRaw) > packetSize-4 || len(writer.pmtRaw) > packetSize-4 {
+		return nil, errPSITooLarge
 	}
 
 	return writer, nil

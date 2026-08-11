@@ -69,8 +69,9 @@ func firstNALType(au []byte, typeOf func([]byte) uint8) uint8 {
 	return result
 }
 
-// h264IsKeyframe reports whether the access unit contains an IDR slice.
-func h264IsKeyframe(au []byte) bool {
+// h264IsRandomAccess reports whether the access unit contains an IDR
+// slice, i.e. whether it is a valid random access point.
+func h264IsRandomAccess(au []byte) bool {
 	found := false
 	forEachNAL(au, func(nal []byte) bool {
 		if h264NALType(nal) == h264NALTypeIDR {
@@ -85,9 +86,11 @@ func h264IsKeyframe(au []byte) bool {
 	return found
 }
 
-// h265IsKeyframe reports whether the access unit contains an IRAP slice
-// (NAL types 16-23: BLA, IDR and CRA pictures).
-func h265IsKeyframe(au []byte) bool {
+// h265IsRandomAccess reports whether the access unit contains an IRAP
+// slice (NAL types 16-23: BLA, IDR and CRA pictures). IRAP pictures are
+// valid random access points but not necessarily full decoder refreshes:
+// CRA and BLA pictures may have undecodable leading pictures.
+func h265IsRandomAccess(au []byte) bool {
 	found := false
 	forEachNAL(au, func(nal []byte) bool {
 		if t := h265NALType(nal); t >= 16 && t <= 23 {

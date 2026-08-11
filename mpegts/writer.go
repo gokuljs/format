@@ -105,7 +105,7 @@ func (w *Writer) WriteH264(pid uint16, pts, dts int64, accessUnit []byte) error 
 		aud = audH264
 	}
 
-	return w.writeAccessUnit(pid, CodecH264, pts, dts, aud, accessUnit, h264IsKeyframe(accessUnit))
+	return w.writeAccessUnit(pid, CodecH264, pts, dts, aud, accessUnit, h264IsRandomAccess(accessUnit))
 }
 
 // WriteH265 writes one H.265 access unit in Annex-B format. An access unit
@@ -116,11 +116,11 @@ func (w *Writer) WriteH265(pid uint16, pts, dts int64, accessUnit []byte) error 
 		aud = audH265
 	}
 
-	return w.writeAccessUnit(pid, CodecH265, pts, dts, aud, accessUnit, h265IsKeyframe(accessUnit))
+	return w.writeAccessUnit(pid, CodecH265, pts, dts, aud, accessUnit, h265IsRandomAccess(accessUnit))
 }
 
 func (w *Writer) writeAccessUnit(
-	pid uint16, codec Codec, pts, dts int64, aud, accessUnit []byte, keyframe bool,
+	pid uint16, codec Codec, pts, dts int64, aud, accessUnit []byte, randomAccess bool,
 ) error {
 	track, ok := w.byPID[pid]
 	if !ok {
@@ -151,7 +151,7 @@ func (w *Writer) writeAccessUnit(
 		pcrValue = uint64(base) * 300 //nolint:gosec
 	}
 
-	return w.writePES(pid, keyframe, withPCR, pcrValue, w.segs)
+	return w.writePES(pid, randomAccess, withPCR, pcrValue, w.segs)
 }
 
 func (w *Writer) maybeWritePSI(dts int64) error {

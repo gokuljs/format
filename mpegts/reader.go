@@ -26,7 +26,7 @@ type AccessUnit struct {
 	// when the stream carries no separate DTS.
 	PTS, DTS int64
 	// RandomAccess reports the random_access_indicator of the packet that
-	// started this access unit (set by muxers on keyframes).
+	// started this access unit (set by muxers on IDR/IRAP pictures).
 	RandomAccess bool
 	// Data is the access unit in Annex-B format. It is only valid until
 	// the next call to NextAccessUnit; copy it to retain it.

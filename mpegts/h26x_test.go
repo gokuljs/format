@@ -35,11 +35,11 @@ func TestForEachNAL(t *testing.T) {
 	assert.Equal(t, []uint8{5}, types)
 }
 
-func TestKeyframeDetection(t *testing.T) {
-	assert.True(t, h264IsKeyframe([]byte{0, 0, 0, 1, 0x65, 0x88}))
-	assert.False(t, h264IsKeyframe([]byte{0, 0, 0, 1, 0x41, 0x9A}))
-	assert.True(t, h265IsKeyframe([]byte{0, 0, 0, 1, 0x26, 0x01, 0xAF}))  // type 19 IDR_W_RADL
-	assert.False(t, h265IsKeyframe([]byte{0, 0, 0, 1, 0x02, 0x01, 0xD0})) // type 1
+func TestRandomAccessDetection(t *testing.T) {
+	assert.True(t, h264IsRandomAccess([]byte{0, 0, 0, 1, 0x65, 0x88}))
+	assert.False(t, h264IsRandomAccess([]byte{0, 0, 0, 1, 0x41, 0x9A}))
+	assert.True(t, h265IsRandomAccess([]byte{0, 0, 0, 1, 0x26, 0x01, 0xAF}))  // type 19 IDR_W_RADL
+	assert.False(t, h265IsRandomAccess([]byte{0, 0, 0, 1, 0x02, 0x01, 0xD0})) // type 1
 }
 
 func TestWriterInsertsAUDAndRAI(t *testing.T) {

@@ -50,7 +50,7 @@ func TestFFmpegH264Fixture(t *testing.T) {
 	aus := drainFixture(t, reader)
 	assert.Len(t, aus, 25)
 	assert.True(t, aus[0].RandomAccess)
-	assert.True(t, h264IsKeyframe(aus[0].Data))
+	assert.True(t, h264IsRandomAccess(aus[0].Data))
 }
 
 func TestFFmpegH265Fixture(t *testing.T) {
@@ -59,7 +59,7 @@ func TestFFmpegH265Fixture(t *testing.T) {
 	assert.Equal(t, CodecH265, reader.Tracks()[0].Codec)
 	aus := drainFixture(t, reader)
 	assert.Len(t, aus, 25)
-	assert.True(t, h265IsKeyframe(aus[0].Data))
+	assert.True(t, h265IsRandomAccess(aus[0].Data))
 }
 
 func TestFFmpegBFrameFixture(t *testing.T) {

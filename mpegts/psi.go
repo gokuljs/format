@@ -24,15 +24,23 @@ type psiSection struct {
 // parsePSISection parses a section from a TS packet payload that has the
 // payload_unit_start_indicator set (so it begins with a pointer_field).
 func parsePSISection(payload []byte) (psiSection, error) {
-	var sec psiSection
 	if len(payload) < 1 {
-		return sec, errSectionTruncated
+		return psiSection{}, errSectionTruncated
 	}
 	skip := 1 + int(payload[0]) // pointer_field
-	if len(payload) < skip+8 {
+	if len(payload) < skip {
+		return psiSection{}, errSectionTruncated
+	}
+
+	return parseSectionBytes(payload[skip:])
+}
+
+// parseSectionBytes parses a complete section starting at table_id.
+func parseSectionBytes(buf []byte) (psiSection, error) {
+	var sec psiSection
+	if len(buf) < 8 {
 		return sec, errSectionTruncated
 	}
-	buf := payload[skip:]
 	sec.tableID = buf[0]
 	length := int(buf[1]&0x0F)<<8 | int(buf[2]) // bytes after this field, CRC included
 	if length < 9 || 3+length > len(buf) {
@@ -53,6 +61,43 @@ func parsePSISection(payload []byte) (psiSection, error) {
 	sec.data = buf[8 : end-4]
 
 	return sec, nil
+}
+
+// sectionAssembler reassembles one PSI section that may span several TS
+// packets on the same PID. Memory is bounded by the 12-bit section_length.
+type sectionAssembler struct {
+	buf    []byte
+	active bool
+}
+
+// feed consumes one packet payload and returns the complete section bytes
+// (starting at table_id) once the announced section_length has arrived,
+// nil while the section is still incomplete.
+func (a *sectionAssembler) feed(unitStart bool, payload []byte) []byte {
+	if unitStart {
+		a.active = false
+		skip := 1 + int(payload[0]) // pointer_field
+		if skip > len(payload) {
+			return nil
+		}
+		a.buf = append(a.buf[:0], payload[skip:]...)
+		a.active = true
+	} else {
+		if !a.active {
+			return nil
+		}
+		a.buf = append(a.buf, payload...)
+	}
+	if len(a.buf) < 3 {
+		return nil
+	}
+	total := 3 + (int(a.buf[1]&0x0F)<<8 | int(a.buf[2]))
+	if len(a.buf) < total {
+		return nil
+	}
+	a.active = false
+
+	return a.buf[:total]
 }
 
 // marshal serializes the section, pointer_field included, ready to be placed

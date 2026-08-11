@@ -113,6 +113,7 @@ func (r *Reader) readPacket() error {
 //nolint:cyclop // Packet filtering keeps malformed or unrelated table packets skippable.
 func (r *Reader) readTables() error {
 	havePAT := false
+	var patAsm, pmtAsm sectionAssembler
 	for {
 		if err := r.readPacket(); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -122,7 +123,7 @@ func (r *Reader) readTables() error {
 			return err
 		}
 		hdr, err := parsePacketHeader(r.pkt[:])
-		if err != nil || hdr.transportError || !hdr.payloadUnitStart {
+		if err != nil || hdr.transportError {
 			continue
 		}
 		payload, _, perr := packetPayload(r.pkt[:], hdr)
@@ -131,9 +132,15 @@ func (r *Reader) readTables() error {
 		}
 		switch {
 		case hdr.pid == pidPAT && !havePAT:
-			havePAT = r.readPAT(payload)
+			if section := patAsm.feed(hdr.payloadUnitStart, payload); section != nil {
+				havePAT = r.readPAT(section)
+			}
 		case havePAT && hdr.pid == r.pmtPID:
-			complete, err := r.readPMT(payload)
+			section := pmtAsm.feed(hdr.payloadUnitStart, payload)
+			if section == nil {
+				continue
+			}
+			complete, err := r.readPMT(section)
 			if err != nil {
 				return err
 			}
@@ -144,9 +151,9 @@ func (r *Reader) readTables() error {
 	}
 }
 
-func (r *Reader) readPAT(payload []byte) bool {
-	section, ok := parseTableSection(payload)
-	if !ok {
+func (r *Reader) readPAT(sectionBytes []byte) bool {
+	section, err := parseSectionBytes(sectionBytes)
+	if err != nil {
 		return false
 	}
 	programs, err := parsePAT(section)
@@ -158,10 +165,10 @@ func (r *Reader) readPAT(payload []byte) bool {
 	return true
 }
 
-func (r *Reader) readPMT(payload []byte) (bool, error) {
-	section, ok := parseTableSection(payload)
-	if !ok {
-		return false, nil
+func (r *Reader) readPMT(sectionBytes []byte) (bool, error) {
+	section, err := parseSectionBytes(sectionBytes)
+	if err != nil {
+		return false, nil //nolint:nilerr // malformed PMT: wait for the next repetition
 	}
 	table, ok := parsePMTSection(section)
 	if !ok {
@@ -183,12 +190,6 @@ func (r *Reader) readPMT(payload []byte) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func parseTableSection(payload []byte) (psiSection, bool) {
-	section, err := parsePSISection(payload)
-
-	return section, err == nil
 }
 
 func parsePMTSection(section psiSection) (pmt, bool) {

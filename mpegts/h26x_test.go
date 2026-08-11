@@ -25,14 +25,14 @@ func TestForEachNAL(t *testing.T) {
 	})
 	assert.Equal(t, []uint8{7, 8, 5}, types)
 
-	// No start code: whole buffer is one NAL.
+	// No start code: not a valid access unit, yields no NAL units.
 	types = nil
 	forEachNAL([]byte{0x65, 0x01}, func(nal []byte) bool {
 		types = append(types, h264NALType(nal))
 
 		return true
 	})
-	assert.Equal(t, []uint8{5}, types)
+	assert.Empty(t, types)
 }
 
 func TestRandomAccessDetection(t *testing.T) {

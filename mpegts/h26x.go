@@ -19,18 +19,12 @@ const (
 	h265NALTypeAUD = 35
 )
 
-// forEachNAL iterates over the NAL units of an Annex-B buffer. A buffer
-// without start codes is treated as a single NAL unit. fn returns false
+// forEachNAL iterates over the NAL units of one complete Annex-B access
+// unit. It is not a streaming parser: it must not be fed partial chunks.
+// A buffer without any start code yields no NAL units. fn returns false
 // to stop early.
 func forEachNAL(annexB []byte, fn func(nal []byte) bool) {
 	idx := bytes.Index(annexB, nalStartCode3)
-	if idx == -1 {
-		if len(annexB) > 0 {
-			fn(annexB)
-		}
-
-		return
-	}
 	for idx != -1 {
 		start := idx + 3
 		rel := bytes.Index(annexB[start:], nalStartCode3)
